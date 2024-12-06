@@ -65,6 +65,7 @@ static bool opt_as_pid_1;
 
 static const char *opt_argv0 = NULL;
 static const char *opt_chdir_path = NULL;
+static bool opt_no_new_privs = true;
 static bool opt_assert_userns_disabled = false;
 static bool opt_disable_userns = false;
 static bool opt_unshare_user = false;
@@ -310,6 +311,7 @@ usage (int ecode, FILE *out)
            "    --args FD                    Parse NUL-separated args from FD\n"
            "    --argv0 VALUE                Set argv[0] to the value VALUE before running the program\n"
            "    --level-prefix               Prepend e.g. <3> to diagnostic messages\n"
+           "    --no-no-new-privs      		 Disable the PR_SET_NO_NEW_PRIVS setting.\n"
            "    --unshare-all                Unshare every namespace we support by default\n"
            "    --share-net                  Retain the network namespace (can only combine with --unshare-all)\n"
            "    --unshare-user               Create new user namespace (may be automatically implied if not setuid)\n"
@@ -1873,6 +1875,10 @@ parse_args_recurse (int          *argcp,
         {
           bwrap_level_prefix = true;
         }
+      else if (strcmp(arg, "--no-no-new-privs") == 0)
+        {
+            opt_no_new_privs = false;
+        }
       else if (strcmp (arg, "--unshare-all") == 0)
         {
           /* Keep this in order with the older (legacy) --unshare arguments,
@@ -2905,8 +2911,11 @@ main (int    argc,
   acquire_privs ();
 
   /* Never gain any more privs during exec */
-  if (prctl (PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) < 0)
-    die_with_error ("prctl(PR_SET_NO_NEW_PRIVS) failed");
+  if (opt_no_new_privs)
+    {
+        if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) < 0)
+            die_with_error("prctl(PR_SET_NO_NEW_PRIVS) failed");
+    }
 
   /* The initial code is run with high permissions
      (i.e. CAP_SYS_ADMIN), so take lots of care. */
